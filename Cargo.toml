@@ -1,0 +1,54 @@
+#
+# Coronaton Paradigma
+#
+[workspace]
+members = [
+    ".",
+#    "lib/futures-mpsc-lossy",
+#    "lib/hyper-balance",
+#    "lib/pkg_crypt",
+#    "lib/router",
+#    "lib/stack",
+#    "lib/task",
+#    "lib/timeout",
+]
+
+[package]
+name = "coronaton"
+version = "1.0.0"
+authors = ["Gonzalo Aguilar <gaguilar@level2crm.com>"]
+publish = false
+
+[features]
+default = ["flaky_tests"]
+# Disable to skip certain tests that should not be run on CI.
+flaky_tests = []
+
+[dependencies]
+log = "0.4"
+env_logger = "0.6"
+clap = "2.33"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+datafusion = "0.16.0"
+arrow = "0.16.0"
+#datafusion = {path="/mnt/optional2/gaguilar/hackaton-datos/git-bigdata/arrow/rust/datafusion", version = "1.0.0-SNAPSHOT"}
+#arrow = {path="/mnt/optional2/gaguilar/hackaton-datos/git-bigdata/arrow/rust/arrow", version = "1.0.0-SNAPSHOT"}
+
+[dev-dependencies]
+#quickcheck = { version = "0.8", default-features = false }
+
+# Debug symbols end up chewing up several GB of disk space, so better to just
+# disable them.
+[profile.dev]
+debug = true
+[profile.test]
+debug = false
+
+#[patch.crates-io]
+#webpki = { git = "https://github.com/seanmonstar/webpki", branch = "cert-dns-names" }
+
+# https://users.rust-lang.org/t/cargo-test-internal-packages/5187/2
+#[[test]]
+#name = "pkg_crypt"
+#path = "lib/pkg_crypt/src/lib.rs" 
