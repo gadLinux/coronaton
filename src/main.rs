@@ -12,11 +12,10 @@ use std::error::Error;
 use clap::{Arg, App, SubCommand};
 
 pub mod coronalib;
-use arrow::array::{Float64Array, StringArray, UInt16Array, UInt64Array};
 
 
 fn main() {
-    let matches = App::new("coronaton challenge - v1.0")
+    let matches = App::new("Coronaton challenge")
       .version("1.0")
       .author("Gonzalo Aguilar Delgado <gaguilar@level2crm.com>")
       .about("Rust arrow tool for the coronaton challenge")
@@ -53,58 +52,22 @@ fn main() {
     env_logger::init();
     
     let datadir = matches.value_of("datadir").unwrap_or("/data");
-    let buffer_size = matches.value_of("batchsize").unwrap_or("1024").parse::<usize>().unwrap_or(1024);
+    let batchsize = matches.value_of("batchsize").unwrap_or("1024").parse::<usize>().unwrap_or(1024);
     println!("Loading data from [{}]...", datadir);
     
     debug!("System initialized. Loading data from {}...", datadir);
 
-    let sql = "SELECT mother_residence_state, year, COUNT(year) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY mother_residence_state";
 
     let mut ctx = coronalib::create_execution_environment(datadir).unwrap();
-    {
-        // execute the query
-        let results = coronalib::execute_query(sql, &mut ctx, buffer_size).unwrap();
-        
-        // print the results
-       // iterate over the results
-        results.iter().for_each(|batch| {
-            println!(
-                "RecordBatch has {} rows and {} columns",
-                batch.num_rows(),
-                batch.num_columns()
-            );
-            batch.schema().fields().iter().for_each(|field| {
-            println!("type {:?}", field.data_type());
-            });
-            
 
-            let state = batch
-                .column(0)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .unwrap();
-
-            let year = batch
-                .column(1)
-                .as_any()
-                .downcast_ref::<UInt64Array>()
-                .unwrap();
-
-            let count = batch
-                .column(2)
-                .as_any()
-                .downcast_ref::<UInt64Array>()
-                .unwrap();
-            for i in 0..batch.num_rows() {
-                println!(
-                    "State {}, Year {}, Births: {}",
-                    state.value(i),
-                    year.value(i),
-                    count.value(i),
-                );
-            }
-        });
-    }
-
-
+    coronalib::b70(&mut ctx, batchsize);
+    coronalib::b80(&mut ctx, batchsize);
+    coronalib::b90(&mut ctx, batchsize);
+    coronalib::b00(&mut ctx, batchsize);
+    coronalib::race70(&mut ctx, batchsize);
+    coronalib::race80(&mut ctx, batchsize);
+    coronalib::race90(&mut ctx, batchsize);
+    coronalib::race00(&mut ctx, batchsize);
+    coronalib::bysex(&mut ctx, batchsize);
+    coronalib::weight(&mut ctx, batchsize);
 }
