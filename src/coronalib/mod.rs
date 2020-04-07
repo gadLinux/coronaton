@@ -66,8 +66,8 @@ pub fn create_execution_environment(datadir: &str) -> Result<ExecutionContext> {
     debug!("Reading file {}", &format!("{}/{}.csv", datadir,FILENAME));
         ctx.register_csv(
         "natalidad",
-//        &format!("{}/{}.csv", datadir, FILENAME),
-        &format!("{}/", datadir),
+        &format!("{}/{}.csv", datadir, FILENAME),
+//        &format!("{}/", datadir),
         &schema::create_schema(),
         true,
     );
@@ -88,16 +88,17 @@ pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Resu
 
     b70(ctx, batchsize, &mut objectives);
     b80(ctx, batchsize, &mut objectives);
-    /*
-    b90(&mut ctx, batchsize, &mut objectives);
-    b00(&mut ctx, batchsize, &mut objectives);
-    race70(&mut ctx, batchsize, &mut objectives);
-    race80(&mut ctx, batchsize, &mut objectives);
-    race90(&mut ctx, batchsize, &mut objectives);
-    race00(&mut ctx, batchsize, &mut objectives);
-    bysex(&mut ctx, batchsize, &mut objectives);
-    weight(&mut ctx, batchsize, &mut objectives);
-    */
+
+    b90(ctx, batchsize, &mut objectives);
+    b00(ctx, batchsize, &mut objectives);
+    race70(ctx, batchsize, &mut objectives);
+    race80(ctx, batchsize, &mut objectives);
+    race90(ctx, batchsize, &mut objectives);
+    race00(ctx, batchsize, &mut objectives);
+
+    bysex(ctx, batchsize, &mut objectives);
+    weight(ctx, batchsize, &mut objectives);
+
 
 
     // Use derived implementation to print the status of the vikings.
@@ -215,42 +216,365 @@ pub fn b80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
 
 pub fn b90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY mother_residence_state";
-    exec_and_print(sql, ctx, batchsize);
+//    exec_and_print(sql, ctx, batchsize);
+   let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: count.value(i),
+                    B00: 0,
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.B90 = count.value(i);
+
+            }
+        });
 }
 
 pub fn b00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=2000 and year<2010 GROUP BY mother_residence_state";
-    exec_and_print(sql, ctx, batchsize);
+//    exec_and_print(sql, ctx, batchsize);
+ let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: 0,
+                    B00: count.value(i),
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.B00 = count.value(i);
+
+            }
+        });
 }
 
 pub fn race70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
+    /*
+    let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: 0,
+                    B00: 0,
+                    Race70: count.value(i),
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.Race70 = count.value(i);
+
+            }
+        });
+        */
 }
 
 pub fn race80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY child_race";
+
     exec_and_print(sql, ctx, batchsize);
+    /*
+        let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: 0,
+                    B00: 0,
+                    Race70: 0,
+                    Race80: count.value(i),
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.Race80 = count.value(i);
+
+            }
+        });*/
 }
 
 pub fn race90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
+    /*
+     let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: 0,
+                    B00: 0,
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: count.value(i),
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.Race90 = count.value(i);
+
+            }
+        });
+        */
 }
 
 pub fn race00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=2000 and year<2010  GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
+    /*
+     let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: 0,
+                    B90: 0,
+                    B00: 0,
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: count.value(i),
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.Race00 = count.value(i);
+
+            }
+        });
+        */
 }
 
 pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT is_male, COUNT(*) FROM natalidad WHERE year>=1970 and year<2010 GROUP BY is_male";
     exec_and_print(sql, ctx, batchsize);
+    /*
+      let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let male = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "Male {}, Births: {}",
+                    male.value(i),
+                    count.value(i),
+                );
+                if(male.value(i).to_string()=="false"){
+                    let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                        Estado: 0,
+                        B70: 0,
+                        B80: 0,
+                        B90: 0,
+                        B00: 0,
+                        Race70: 0,
+                        Race80: 0,
+                        Race90: 0,
+                        Race00: 0,
+                        Male: 0,
+                        Female: count.value(i),
+                        Weight: 0.0,
+                    });
+                    stateResult.Female = count.value(i);
+                }else{
+                        let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                        Estado: 0,
+                        B70: 0,
+                        B80: 0,
+                        B90: 0,
+                        B00: 0,
+                        Race70: 0,
+                        Race80: 0,
+                        Race90: 0,
+                        Race00: 0,
+                        Male: count.value(i),
+                        Female: 0,
+                        Weight: 0.0,
+                    });
+                    stateResult.Male = count.value(i);
+                }
+
+            }
+        });
+        */
 }
 
 pub fn weight(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT avg(weight_pounds) FROM natalidad WHERE year>=1970 and year<2010";
     exec_and_print(sql, ctx, batchsize);
+
 }
 
 
