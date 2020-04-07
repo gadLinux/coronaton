@@ -3,8 +3,13 @@ extern crate arrow;
 
 pub mod schema;
 
+use std::io;
 use std::vec::Vec;
 use std::sync::Arc;
+use std::path::Path;
+use std::fs::{remove_file,OpenOptions};
+use std::collections::HashMap;
+
 
 use datafusion::execution::context::ExecutionContext;
 use datafusion::error::Result;
@@ -13,10 +18,45 @@ use datafusion::utils;
 use arrow::record_batch::RecordBatch;
 use arrow::array::{Float64Array, StringArray, UInt16Array, UInt64Array};
 
+use std::error::Error;
+use csv::Writer;
+
+
 use log;
 
-//static FILENAME: &str = "natalidad000000000000";
-static FILENAME: &str = "natalidad";
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StateResult {
+    Estado: String,
+    B70: u64,
+    B80: u64,
+    B90: u64,
+    B00: u64,
+    Race70: u64,
+    Race80: u64,
+    Race90: u64,
+    Race00: u64,
+    Male: u64,
+    Female: u64,
+    Weight: f32,
+}
+
+/*
+Estado (string)
+B70: Nacimientos en la decada los 70 en ese estado (number)
+B80: Nacimientos en la decada los 80 en ese estado (number)
+B90: Nacimientos en la decada los 90 en ese estado (number)
+B00: Nacimientos en la decada los 2000 en ese estado (number)
+Race70: Raza con mayor número de nacimientos en la decada de los 70 en ese estado (string)
+Race80: Raza con mayor número de nacimientos en la decada de los 80 en ese estado (string)
+Race90: Raza con mayor número de nacimientos en la decada de los 90 en ese estado(string)
+Race00: Raza con mayor número de nacimientos en la decada de los 2000 en ese estado (string)
+Male: Numero de nacimientos de hombres en los desde el 70 al 2010 (number)
+Female: Numero de nacimientos de hombres en los desde el 70 al 2010 (number)
+Weight: peso medio en kilos de todos los niños nacidos en ese estado desde el 70 al 2010 (float)
+*/
+
+static FILENAME: &str = "natalidad000000000000";
+//static FILENAME: &str = "natalidad";
 
 pub fn create_execution_environment(datadir: &str) -> Result<ExecutionContext> {
     // create local execution context
@@ -26,6 +66,7 @@ pub fn create_execution_environment(datadir: &str) -> Result<ExecutionContext> {
     debug!("Reading file {}", &format!("{}/{}.csv", datadir,FILENAME));
         ctx.register_csv(
         "natalidad",
+//        &format!("{}/{}.csv", datadir, FILENAME),
         &format!("{}/", datadir),
         &schema::create_schema(),
         true,
@@ -42,13 +83,86 @@ pub fn execute_query(query: &str, ctx: &mut ExecutionContext, batchsize: usize) 
     ctx.collect(plan.as_ref())
 }
 
+pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Result<HashMap<String,StateResult>> {
+    let mut objectives: HashMap<String, StateResult> = HashMap::new();
+
+    b70(ctx, batchsize, &mut objectives);
+    /*
+    b80(&mut ctx, batchsize);
+    b90(&mut ctx, batchsize);
+    b00(&mut ctx, batchsize);
+    race70(&mut ctx, batchsize);
+    race80(&mut ctx, batchsize);
+    race90(&mut ctx, batchsize);
+    race00(&mut ctx, batchsize);
+    bysex(&mut ctx, batchsize);
+    weight(&mut ctx, batchsize);
+    */
+
+
+    // Use derived implementation to print the status of the vikings.
+    for (state, stateObjective) in &objectives {
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(&format!("result_{}.csv", state))
+            .unwrap();
+        let mut wtr = Writer::from_writer(file);
+        wtr.serialize(stateObjective).unwrap();
+        wtr.flush();
+    }
+    Ok(objectives)
+}
 
 /*
  * Objectives
  */
-pub fn b70(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn b70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY mother_residence_state";
-    exec_and_print(sql, ctx, batchsize);
+//    exec_and_print(sql, ctx, batchsize);
+    let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: count.value(i),
+                    B80: 0,
+                    B90: 0,
+                    B00: 0,
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+
+            }
+        });
+
 }
 
 pub fn b80(ctx: &mut ExecutionContext, batchsize: usize){
@@ -101,5 +215,64 @@ fn exec_and_print(sql: &str, ctx: &mut ExecutionContext, batchsize: usize){
     // execute the query
     let results = execute_query(sql, ctx, batchsize).unwrap();
     utils::print_batches(&results).unwrap();
+}
+
+
+
+
+
+#[test]
+fn should_write_csv() -> Result<()> {
+    let mut wtr = Writer::from_writer(vec![]);
+    wtr.serialize(StateResult {
+        Estado: "VA".to_string(),
+        B70: 1,
+        B80: 2,
+        B90: 3,
+        B00: 4,
+        Race70: 5,
+        Race80: 6,
+        Race90: 7,
+        Race00: 8,
+        Male: 9,
+        Female: 10,
+        Weight: 11.1,
+    }).unwrap();
+    let data = String::from_utf8(wtr.into_inner().unwrap()).unwrap_or("Error".to_string());
+    debug!("Serialized [{}]", data);
+    assert_eq!(data, "Estado,B70,B80,B90,B00,Race70,Race80,Race90,Race00,Male,Female,Weight\nVA,1,2,3,4,5,6,7,8,9,10,11.1\n");
+    Ok(())
+}
+
+#[test]
+fn should_write_csv_file() -> Result<()> {
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open("test.csv")
+        .unwrap();
+
+    let mut wtr = Writer::from_writer(file);
+    wtr.serialize(StateResult {
+        Estado: "VA".to_string(),
+        B70: 1,
+        B80: 2,
+        B90: 3,
+        B00: 4,
+        Race70: 5,
+        Race80: 6,
+        Race90: 7,
+        Race00: 8,
+        Male: 9,
+        Female: 10,
+        Weight: 11.1,
+    }).unwrap();
+    if(Path::new("test.csv").exists()){
+        remove_file("test.csv").unwrap();
+        return Ok(());
+    }
+    assert!(false);
+    Ok(())
 }
 

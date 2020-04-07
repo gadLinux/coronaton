@@ -19,15 +19,15 @@ Will show the help:
 
 Run with 15,5Gb and data dir:
 
-> cargo run --release -- -b 16252928 -d /mnt/optional2/gaguilar/hackaton-datos/data/
+> cargo run --release -- -b 239013 -d /mnt/optional2/gaguilar/hackaton-datos/data/
 
 Timing it: 
 
-> time cargo run --release -- -b 16252928 -d /mnt/optional2/gaguilar/hackaton-datos/data/
+> time cargo run --release -- -b 239013 -d /mnt/optional2/gaguilar/hackaton-datos/data/
 
 Avoid cargo overhead:
 
-> time ./target/release/coronaton -b 16252928 -d /mnt/optional2/gaguilar/hackaton-datos/data/
+> time ./target/release/coronaton -b 239013 -d /mnt/optional2/gaguilar/hackaton-datos/data/
 
 ## Commands
 
@@ -51,9 +51,21 @@ We have:
 So we do
 
 > docker run -d -it --name coronaton-v1 --mount type=bind,source=/mnt/optional2/gaguilar/hackaton-datos/data,target=/data coronaton-v1:latest
- 
+
 
 ## Docker check output
 
 > docker logs -f <container_id>
 
+## Logging
+
+You can set desired log level by setting the environment variable RUST_LOG=debug as defined here: 
+https://docs.rs/env_logger/0.7.1/env_logger/
+
+The logs will be shown as part as the application
+
+
+## Debugging
+
+After compiling the target you can backtrace the crashes by adding RUST_BACKTRACE=1 environment
+variable.

@@ -5,6 +5,9 @@
 extern crate env_logger;
 extern crate arrow;
 extern crate datafusion;
+#[macro_use]
+extern crate serde_derive;
+extern crate csv;
 
 #[macro_use]
 extern crate clap;
@@ -60,14 +63,6 @@ fn main() {
 
     let mut ctx = coronalib::create_execution_environment(datadir).unwrap();
 
-    coronalib::b70(&mut ctx, batchsize);
-    coronalib::b80(&mut ctx, batchsize);
-    coronalib::b90(&mut ctx, batchsize);
-    coronalib::b00(&mut ctx, batchsize);
-    coronalib::race70(&mut ctx, batchsize);
-    coronalib::race80(&mut ctx, batchsize);
-    coronalib::race90(&mut ctx, batchsize);
-    coronalib::race00(&mut ctx, batchsize);
-    coronalib::bysex(&mut ctx, batchsize);
-    coronalib::weight(&mut ctx, batchsize);
+    coronalib::process_objectives(&mut ctx, batchsize);
+
 }
