@@ -66,8 +66,8 @@ pub fn create_execution_environment(datadir: &str) -> Result<ExecutionContext> {
     debug!("Reading file {}", &format!("{}/{}.csv", datadir,FILENAME));
         ctx.register_csv(
         "natalidad",
-        &format!("{}/{}.csv", datadir, FILENAME),
-//        &format!("{}/", datadir),
+//        &format!("{}/{}.csv", datadir, FILENAME),
+        &format!("{}/", datadir),
         &schema::create_schema(),
         true,
     );
