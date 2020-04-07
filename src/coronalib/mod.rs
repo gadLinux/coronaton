@@ -87,16 +87,16 @@ pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Resu
     let mut objectives: HashMap<String, StateResult> = HashMap::new();
 
     b70(ctx, batchsize, &mut objectives);
+    b80(ctx, batchsize, &mut objectives);
     /*
-    b80(&mut ctx, batchsize);
-    b90(&mut ctx, batchsize);
-    b00(&mut ctx, batchsize);
-    race70(&mut ctx, batchsize);
-    race80(&mut ctx, batchsize);
-    race90(&mut ctx, batchsize);
-    race00(&mut ctx, batchsize);
-    bysex(&mut ctx, batchsize);
-    weight(&mut ctx, batchsize);
+    b90(&mut ctx, batchsize, &mut objectives);
+    b00(&mut ctx, batchsize, &mut objectives);
+    race70(&mut ctx, batchsize, &mut objectives);
+    race80(&mut ctx, batchsize, &mut objectives);
+    race90(&mut ctx, batchsize, &mut objectives);
+    race00(&mut ctx, batchsize, &mut objectives);
+    bysex(&mut ctx, batchsize, &mut objectives);
+    weight(&mut ctx, batchsize, &mut objectives);
     */
 
 
@@ -145,7 +145,7 @@ pub fn b70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
                     state.value(i),
                     count.value(i),
                 );
-                objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                let stateResult =objectives.entry(state.value(i).to_string()).or_insert(StateResult{
                     Estado: state.value(i).to_string(),
                     B70: count.value(i),
                     B80: 0,
@@ -159,53 +159,96 @@ pub fn b70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
                     Female: 0,
                     Weight: 0.0,
                 });
+                stateResult.B70 = count.value(i);
 
             }
         });
 
 }
 
-pub fn b80(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn b80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY mother_residence_state";
-    exec_and_print(sql, ctx, batchsize);
+//    exec_and_print(sql, ctx, batchsize);
+    let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let state = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+
+            let count = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                debug!(
+                    "State {}, Births: {}",
+                    state.value(i),
+                    count.value(i),
+                );
+                let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
+                    Estado: state.value(i).to_string(),
+                    B70: 0,
+                    B80: count.value(i),
+                    B90: 0,
+                    B00: 0,
+                    Race70: 0,
+                    Race80: 0,
+                    Race90: 0,
+                    Race00: 0,
+                    Male: 0,
+                    Female: 0,
+                    Weight: 0.0,
+                });
+                stateResult.B80 = count.value(i);
+
+            }
+        });
 }
 
-pub fn b90(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn b90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY mother_residence_state";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn b00(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn b00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=2000 and year<2010 GROUP BY mother_residence_state";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn race70(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn race70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn race80(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn race80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn race90(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn race90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn race00(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn race00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=2000 and year<2010  GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT is_male, COUNT(*) FROM natalidad WHERE year>=1970 and year<2010 GROUP BY is_male";
     exec_and_print(sql, ctx, batchsize);
 }
 
-pub fn weight(ctx: &mut ExecutionContext, batchsize: usize){
+pub fn weight(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
     let sql = "SELECT avg(weight_pounds) FROM natalidad WHERE year>=1970 and year<2010";
     exec_and_print(sql, ctx, batchsize);
 }
