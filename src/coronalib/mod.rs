@@ -37,7 +37,7 @@ pub struct StateResult {
     Race00: u64,
     Male: u64,
     Female: u64,
-    Weight: f32,
+    Weight: f64,
 }
 
 /*
@@ -85,32 +85,48 @@ pub fn execute_query(query: &str, ctx: &mut ExecutionContext, batchsize: usize) 
 
 pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Result<HashMap<String,StateResult>> {
     let mut objectives: HashMap<String, StateResult> = HashMap::new();
-
     b70(ctx, batchsize, &mut objectives);
     b80(ctx, batchsize, &mut objectives);
-
     b90(ctx, batchsize, &mut objectives);
     b00(ctx, batchsize, &mut objectives);
+
+/*
     race70(ctx, batchsize, &mut objectives);
     race80(ctx, batchsize, &mut objectives);
     race90(ctx, batchsize, &mut objectives);
     race00(ctx, batchsize, &mut objectives);
+*/
 
-    bysex(ctx, batchsize, &mut objectives);
-    weight(ctx, batchsize, &mut objectives);
+    debug!("Calculate by sex");
+    let (male,female) = bysex(ctx, batchsize);
+    let avg = weight(ctx, batchsize);
+    for (state, stateObjective) in &mut objectives {
+        debug!("State {}", state);
+        stateObjective.Female = female;
+        stateObjective.Male = male;
+        stateObjective.Weight = avg;
+    }
+/*
+
+*/
 
 
-
-    // Use derived implementation to print the status of the vikings.
-    for (state, stateObjective) in &objectives {
+    /*
+        Use derived implementation to write results
+    */
+    debug!("Writing file");
+    {
         let file = OpenOptions::new()
             .write(true)
             .create(true)
             .append(true)
-            .open(&format!("result_{}.csv", state))
+            .open(&format!("result_{}.csv", "gaguilar"))
             .unwrap();
+
         let mut wtr = Writer::from_writer(file);
-        wtr.serialize(stateObjective).unwrap();
+        for (state, stateObjective) in &objectives {
+            wtr.serialize(stateObjective).unwrap();
+        }
         wtr.flush();
     }
     Ok(objectives)
@@ -120,8 +136,8 @@ pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Resu
  * Objectives
  */
 pub fn b70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
-    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY mother_residence_state";
-//    exec_and_print(sql, ctx, batchsize);
+//    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY mother_residence_state";
+    let sql = "SELECT mother_residence_state, COUNT(*) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY mother_residence_state";
     let results = execute_query(sql, ctx, batchsize).unwrap();
     results.iter().for_each(|batch| {
             debug!(
@@ -168,8 +184,8 @@ pub fn b70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
 }
 
 pub fn b80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
-    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY mother_residence_state";
-//    exec_and_print(sql, ctx, batchsize);
+//    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY mother_residence_state";
+    let sql = "SELECT mother_residence_state, COUNT(*) FROM natalidad WHERE year>=1980 and year<1990 GROUP BY mother_residence_state";
     let results = execute_query(sql, ctx, batchsize).unwrap();
     results.iter().for_each(|batch| {
             debug!(
@@ -215,7 +231,8 @@ pub fn b80(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
 }
 
 pub fn b90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
-    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY mother_residence_state";
+//    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY mother_residence_state";
+    let sql = "SELECT mother_residence_state, COUNT(*) FROM natalidad WHERE year>=1990 and year<2000 GROUP BY mother_residence_state";
 //    exec_and_print(sql, ctx, batchsize);
    let results = execute_query(sql, ctx, batchsize).unwrap();
     results.iter().for_each(|batch| {
@@ -262,7 +279,8 @@ pub fn b90(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
 }
 
 pub fn b00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
-    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=2000 and year<2010 GROUP BY mother_residence_state";
+//    let sql = "SELECT mother_residence_state, SUM(plurality) FROM natalidad WHERE year>=2000 and year<2010 GROUP BY mother_residence_state";
+    let sql = "SELECT mother_residence_state, COUNT(*) FROM natalidad WHERE year>=2000 and year<2010 GROUP BY mother_residence_state";
 //    exec_and_print(sql, ctx, batchsize);
  let results = execute_query(sql, ctx, batchsize).unwrap();
     results.iter().for_each(|batch| {
@@ -309,7 +327,7 @@ pub fn b00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMa
 }
 
 pub fn race70(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
-    let sql = "SELECT child_race, COUNT(*) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY child_race";
+    let sql = "SELECT child_race, COUNT(child_race) FROM natalidad WHERE year>=1970 and year<1980 GROUP BY child_race";
     exec_and_print(sql, ctx, batchsize);
     /*
     let results = execute_query(sql, ctx, batchsize).unwrap();
@@ -504,11 +522,11 @@ pub fn race00(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut Has
         */
 }
 
-pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
+pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize) -> (u64,u64){
     let sql = "SELECT is_male, COUNT(*) FROM natalidad WHERE year>=1970 and year<2010 GROUP BY is_male";
-    exec_and_print(sql, ctx, batchsize);
-    /*
-      let results = execute_query(sql, ctx, batchsize).unwrap();
+    let mut males=0;
+    let mut females=0;
+    let results = execute_query(sql, ctx, batchsize).unwrap();
     results.iter().for_each(|batch| {
             debug!(
                 "RecordBatch has {} rows and {} columns",
@@ -532,49 +550,37 @@ pub fn bysex(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut Hash
                     male.value(i),
                     count.value(i),
                 );
-                if(male.value(i).to_string()=="false"){
-                    let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
-                        Estado: 0,
-                        B70: 0,
-                        B80: 0,
-                        B90: 0,
-                        B00: 0,
-                        Race70: 0,
-                        Race80: 0,
-                        Race90: 0,
-                        Race00: 0,
-                        Male: 0,
-                        Female: count.value(i),
-                        Weight: 0.0,
-                    });
-                    stateResult.Female = count.value(i);
+                if male.value(i).to_string()=="false" {
+                    females = count.value(i);
                 }else{
-                        let stateResult = objectives.entry(state.value(i).to_string()).or_insert(StateResult{
-                        Estado: 0,
-                        B70: 0,
-                        B80: 0,
-                        B90: 0,
-                        B00: 0,
-                        Race70: 0,
-                        Race80: 0,
-                        Race90: 0,
-                        Race00: 0,
-                        Male: count.value(i),
-                        Female: 0,
-                        Weight: 0.0,
-                    });
-                    stateResult.Male = count.value(i);
+                    males = count.value(i);
                 }
 
             }
         });
-        */
+        (males,females)
 }
 
-pub fn weight(ctx: &mut ExecutionContext, batchsize: usize, objectives: &mut HashMap<String,StateResult>){
+pub fn weight(ctx: &mut ExecutionContext, batchsize: usize) -> f64 {
     let sql = "SELECT avg(weight_pounds) FROM natalidad WHERE year>=1970 and year<2010";
-    exec_and_print(sql, ctx, batchsize);
-
+    let mut avg: f64=0.0;
+    let results = execute_query(sql, ctx, batchsize).unwrap();
+    results.iter().for_each(|batch| {
+            debug!(
+                "RecordBatch has {} rows and {} columns",
+                batch.num_rows(),
+                batch.num_columns()
+            );
+            let avgarray = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<Float64Array>()
+                .unwrap();
+            for i in 0..batch.num_rows() {
+                avg = avgarray.value(i);
+            }
+        });
+    avg
 }
 
 
