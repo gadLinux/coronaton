@@ -83,7 +83,7 @@ pub fn execute_query(query: &str, ctx: &mut ExecutionContext, batchsize: usize) 
     ctx.collect(plan.as_ref())
 }
 
-pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Result<HashMap<String,StateResult>> {
+pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize, datadir: &str) -> Result<HashMap<String,StateResult>> {
     let mut objectives: HashMap<String, StateResult> = HashMap::new();
     b70(ctx, batchsize, &mut objectives);
     b80(ctx, batchsize, &mut objectives);
@@ -115,12 +115,13 @@ pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize) -> Resu
         Use derived implementation to write results
     */
     debug!("Writing file");
+    debug!("Writing file {}", &format!("{}/result_{}.csv", datadir,"gaguilar"));
     {
         let file = OpenOptions::new()
             .write(true)
             .create(true)
             .append(true)
-            .open(&format!("result_{}.csv", "gaguilar"))
+            .open(&format!("{}/result_{}.csv", datadir,"gaguilar"))
             .unwrap();
 
         let mut wtr = Writer::from_writer(file);

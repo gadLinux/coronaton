@@ -63,6 +63,6 @@ fn main() {
 
     let mut ctx = coronalib::create_execution_environment(datadir).unwrap();
 
-    coronalib::process_objectives(&mut ctx, batchsize);
+    coronalib::process_objectives(&mut ctx, batchsize, datadir);
 
 }
