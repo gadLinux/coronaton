@@ -20,8 +20,14 @@ FROM rustlang/rust:nightly
 ENV batchsize=239013
 RUN mkdir -p /opt/coronaton
 RUN mkdir -p /data
-COPY target/release/coronaton /opt/coronaton
+RUN rustup toolchain install nightly-2020-04-22
+RUN rustup default nightly-2020-04-22
+RUN rustup component add rustfmt
+
+COPY . /opt/coronaton
 WORKDIR /opt/coronaton
+RUN cargo build --release
+
 # RUN cargo install --bin datafusion-cli --path .
 
-CMD ["./coronaton", "-b", "${batchsize}", "-d", "/data"]
+CMD ["./target/release/coronaton", "-b", "${batchsize}", "-d", "/data"]

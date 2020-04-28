@@ -17,7 +17,7 @@ be built.
 Will show the help: 
 > cargo run --release -- --help
 
-Run with 15,5Gb and data dir:
+Run with 15,5Gb and data dir. 15GB because it uses the memory on -b for each file:
 
 > cargo run --release -- -b 239013 -d /mnt/optional2/gaguilar/hackaton-datos/data/
 
@@ -34,14 +34,15 @@ Avoid cargo overhead:
 
 ## Build docker
 
-You can build the image with:
+You can build the image with. Note: Now builds on the docker machine the target so it takes 
+a looooooooong time.
 
 > docker build -t coronaton-v1 .
 
 
 ## Runnind Docker and binding to the data volume
 
-> docker run -d -it --name coronaton-v1 --mount type=bind,source=<source_dir>,target=/data <image>
+> docker run -d -it --cpus=8 --name coronaton-v1 --mount type=bind,source=<source_dir>,target=/data <image>
 
 We have:
 
@@ -50,7 +51,7 @@ We have:
  
 So we do
 
-> docker run -d -it --name coronaton-v1 --mount type=bind,source=/mnt/optional2/gaguilar/hackaton-datos/data,target=/data coronaton-v1:latest
+> docker run -d -it --cpus=8 --name coronaton-v1 --mount type=bind,source=/mnt/optional2/gaguilar/hackaton-datos/data,target=/data coronaton-v1:latest
 
 
 ## Docker check output
@@ -63,6 +64,8 @@ You can set desired log level by setting the environment variable RUST_LOG=debug
 https://docs.rs/env_logger/0.7.1/env_logger/
 
 The logs will be shown as part as the application
+
+RUST_LOG=debug will set logs to debug
 
 
 ## Debugging

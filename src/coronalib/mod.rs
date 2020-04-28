@@ -114,7 +114,6 @@ pub fn process_objectives( ctx: &mut ExecutionContext, batchsize: usize, datadir
     /*
         Use derived implementation to write results
     */
-    debug!("Writing file");
     debug!("Writing file {}", &format!("{}/result_{}.csv", datadir,"gaguilar"));
     {
         let file = OpenOptions::new()
