@@ -17,7 +17,7 @@
 
 FROM rustlang/rust:nightly
 
-ENV batchsize=239013 # You can set this variable when running with -e "batchsize=1024"
+ENV batchsize=239013
 RUN mkdir -p /opt/coronaton
 RUN mkdir -p /data
 COPY target/release/coronaton /opt/coronaton
